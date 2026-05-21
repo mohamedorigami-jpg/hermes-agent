@@ -1409,6 +1409,15 @@ export default class Ink {
       ENTER_ALT_SCREEN + ERASE_SCREEN + CURSOR_HOME + enableMouseTrackingFor(this.altScreenMouseTracking)
     )
     this.resetFramesForAltScreen()
+    // ERASE_SCREEN above leaves the physical alt screen blank, and
+    // resetFramesForAltScreen() seeds prev/back as blank rows×cols, so
+    // nothing on the front frame survives the re-entry. Callers
+    // (handleResume on SIGCONT, the resize self-heal, the stdin-gap
+    // re-assertion) all return early after invoking us, so without an
+    // explicit render schedule the alt screen sits blank until some
+    // unrelated state change fires the next commit. queueing one
+    // microtask matches scheduleRender's normal cadence.
+    this.scheduleRender()
   }
 
   /**

@@ -845,7 +845,6 @@ def _coerce_statusbar(raw) -> str:
     return "top"
 
 
-_MOUSE_TRACKING_MODES = frozenset({"off", "wheel", "buttons", "all"})
 _MOUSE_TRACKING_ALIASES = {
     "0": "off",
     "1": "all",
