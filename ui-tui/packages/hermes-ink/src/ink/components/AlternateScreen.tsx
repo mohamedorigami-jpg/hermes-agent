@@ -82,7 +82,14 @@ export function AlternateScreen(t0: Props) {
           enableMouse
       )
       ink?.setAltScreenActive(true, mouseTracking)
-      ink?.setAltScreenMouseTracking(mouseTracking)
+      // setAltScreenActive(true, mouseTracking) above stores the mode for
+      // SIGCONT/resize/stdin-gap re-assertion. We don't also call
+      // setAltScreenMouseTracking(mouseTracking) here: it would early-return
+      // in the happy mode-change path (active flipped false→true with the
+      // new mode), and on any path where setAltScreenActive saw active was
+      // already true (so it didn't store mode), the writeRaw above has
+      // already DISABLE'd + enabled the new mode. A second
+      // setAltScreenMouseTracking would just duplicate the same DEC bytes.
 
       return () => {
         ink?.setAltScreenActive(false)
