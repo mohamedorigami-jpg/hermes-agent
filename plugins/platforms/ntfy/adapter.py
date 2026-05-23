@@ -256,6 +256,17 @@ class NtfyAdapter(BasePlatformAdapter):
                     retryable=False,
                 )
                 raise _FatalStreamError("401 Unauthorized")
+            if response.status_code == 403:
+                logger.error(
+                    "[%s] Forbidden (403) — stopping reconnect loop. Check NTFY_TOKEN permissions.",
+                    self.name,
+                )
+                self._set_fatal_error(
+                    "ntfy_forbidden",
+                    "ntfy server rejected request (403). Check NTFY_TOKEN has publish/subscribe permissions.",
+                    retryable=False,
+                )
+                raise _FatalStreamError("403 Forbidden")
             if response.status_code == 404:
                 logger.error(
                     "[%s] Topic not found (404): %s — stopping reconnect loop.",
@@ -391,16 +402,11 @@ class NtfyAdapter(BasePlatformAdapter):
         if markdown_enabled:
             headers["X-Markdown"] = "true"
 
-        if len(content) > self.MAX_MESSAGE_LENGTH:
-            logger.warning(
-                "[%s] Message truncated from %d to %d chars (ntfy limit)",
-                self.name, len(content), self.MAX_MESSAGE_LENGTH,
-            )
-        body = content[:self.MAX_MESSAGE_LENGTH]
+        body = _truncate_body(content, context=f"{self.name} adapter.send")
 
         try:
             resp = await self._http_client.post(
-                url, content=body.encode("utf-8"), headers=headers, timeout=15.0,
+                url, content=body, headers=headers, timeout=15.0,
             )
             if resp.status_code < 300:
                 try:
@@ -456,7 +462,7 @@ def _env_enablement() -> dict | None:
         return None
     seed: dict = {
         "topic": topic,
-        "server": os.getenv("NTFY_SERVER_URL", DEFAULT_SERVER).rstrip("/"),
+        "server": os.getenv("NTFY_SERVER_URL", DEFAULT_SERVER).strip().rstrip("/"),
     }
     publish_topic = os.getenv("NTFY_PUBLISH_TOPIC", "").strip()
     if publish_topic:

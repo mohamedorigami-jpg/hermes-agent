@@ -663,6 +663,12 @@ class TestEnvEnablement:
         seed = _env_enablement()
         assert seed["server"] == "https://ntfy.example.com"  # trailing slash stripped
 
+    def test_server_url_whitespace_stripped(self, monkeypatch):
+        monkeypatch.setenv("NTFY_TOPIC", "hermes-in")
+        monkeypatch.setenv("NTFY_SERVER_URL", "  https://ntfy.example.com/  ")
+        seed = _env_enablement()
+        assert seed["server"] == "https://ntfy.example.com"  # whitespace + slash stripped
+
     def test_publish_topic_seeded(self, monkeypatch):
         monkeypatch.setenv("NTFY_TOPIC", "hermes-in")
         monkeypatch.setenv("NTFY_PUBLISH_TOPIC", "hermes-out")
@@ -899,6 +905,27 @@ class TestFatalErrorPropagation:
 
         assert adapter.has_fatal_error is True
         assert adapter._fatal_error_code == "ntfy_unauthorized"
+        assert adapter._fatal_error_retryable is False
+
+    def test_403_sets_fatal_forbidden(self):
+        adapter = NtfyAdapter(PlatformConfig(enabled=True, extra={"topic": "t"}))
+        adapter._http_client = MagicMock()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_cm = AsyncMock()
+        mock_cm.__aenter__ = AsyncMock(return_value=mock_response)
+        mock_cm.__aexit__ = AsyncMock(return_value=None)
+        adapter._http_client.stream = MagicMock(return_value=mock_cm)
+
+        fake_httpx = MagicMock()
+        fake_httpx.Timeout = MagicMock()
+        with patch.object(_ntfy, "httpx", fake_httpx):
+            with pytest.raises(_ntfy._FatalStreamError):
+                _run(adapter._consume_stream("https://ntfy.example/t/json", {}))
+
+        assert adapter.has_fatal_error is True
+        assert adapter._fatal_error_code == "ntfy_forbidden"
         assert adapter._fatal_error_retryable is False
 
     def test_404_sets_fatal_topic_not_found(self):
