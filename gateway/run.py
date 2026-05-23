@@ -3762,7 +3762,6 @@ class GatewayRunner:
             "BLUEBUBBLES_ALLOWED_USERS",
             "QQ_ALLOWED_USERS",
             "YUANBAO_ALLOWED_USERS",
-            "NTFY_ALLOWED_USERS",
             "GATEWAY_ALLOWED_USERS",
         )
         _builtin_allow_all_vars = (
@@ -3778,7 +3777,6 @@ class GatewayRunner:
             "BLUEBUBBLES_ALLOW_ALL_USERS",
             "QQ_ALLOW_ALL_USERS",
             "YUANBAO_ALLOW_ALL_USERS",
-            "NTFY_ALLOW_ALL_USERS",
         )
         # Also pick up plugin-registered platforms — each entry can declare
         # its own allowed_users_env / allow_all_env, so the warning stays
@@ -6156,12 +6154,6 @@ class GatewayRunner:
                 return None
             return QQAdapter(config)
 
-        elif platform == Platform.NTFY:
-            from gateway.platforms.ntfy import NtfyAdapter, check_ntfy_requirements
-            if not check_ntfy_requirements():
-                logger.warning("ntfy: dependencies not met")
-                return None
-            return NtfyAdapter(config)
         elif platform == Platform.YUANBAO:
             from gateway.platforms.yuanbao import YuanbaoAdapter, WEBSOCKETS_AVAILABLE
             if not WEBSOCKETS_AVAILABLE:
@@ -6238,7 +6230,6 @@ class GatewayRunner:
             Platform.BLUEBUBBLES: "BLUEBUBBLES_ALLOWED_USERS",
             Platform.QQBOT: "QQ_ALLOWED_USERS",
             Platform.YUANBAO: "YUANBAO_ALLOWED_USERS",
-            Platform.NTFY: "NTFY_ALLOWED_USERS",
         }
         platform_group_user_env_map = {
             Platform.TELEGRAM: "TELEGRAM_GROUP_ALLOWED_USERS",
@@ -6265,7 +6256,6 @@ class GatewayRunner:
             Platform.BLUEBUBBLES: "BLUEBUBBLES_ALLOW_ALL_USERS",
             Platform.QQBOT: "QQ_ALLOW_ALL_USERS",
             Platform.YUANBAO: "YUANBAO_ALLOW_ALL_USERS",
-            Platform.NTFY: "NTFY_ALLOW_ALL_USERS",
         }
         # Bots admitted by {PLATFORM}_ALLOW_BOTS bypass the human allowlist (#4466).
         platform_allow_bots_map = {
