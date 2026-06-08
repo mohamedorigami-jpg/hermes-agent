@@ -5908,7 +5908,7 @@ class TestStreamingApiCall:
         with patch.object(agent, "_replace_primary_openai_client", return_value=False):
             resp = agent._interruptible_streaming_api_call({"messages": []})
         # Should return a stub instead of raising
-        assert resp.id.startswith("stream-")
+        assert resp.id == "partial-stream-stub"
         assert resp.choices[0].message.content is None
         assert resp.choices[0].finish_reason == "length"
 
