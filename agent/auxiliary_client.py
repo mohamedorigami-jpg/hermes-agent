@@ -2396,15 +2396,20 @@ def _is_server_error(exc: Exception) -> bool:
     Bad Gateway, Service Unavailable, Gateway Timeout) and gRPC
     UNAVAILABLE status.  These indicate the provider's servers had an
     issue, distinct from client-side problems like billing or auth.
+
+    Note: gRPC UNAVAILABLE is distinct from the HTTP-level
+    "service unavailable" / "temporarily unavailable" patterns
+    handled by :func:`_is_unavailable_error`, which also catches
+    503 and 429-with-overload messaging more specifically.
     """
     status = getattr(exc, "status_code", None)
     if isinstance(status, int) and 500 <= status <= 504:
         return True
     err_lower = str(exc).lower()
-    # gRPC status code literal "UNAVAILABLE" — the gRPC string, not
-    # just the plain-English word "unavailable".  Both appear in the
-    # error representation so a simple substring match is sufficient.
-    if "unavailable" in err_lower:
+    # gRPC status code literal "UNAVAILABLE" — match only when
+    # both "grpc" and "unavailable" appear to avoid false positives
+    # from billing or feature-region messages.
+    if "grpc" in err_lower and "unavailable" in err_lower:
         return True
     return False
 
@@ -2416,9 +2421,12 @@ def _is_unavailable_error(exc: Exception) -> bool:
     server-overload messaging, and errors whose text explicitly says
     the service is temporarily unavailable.
 
-    Distinct from :func:`_is_server_error` which covers the broader
-    5xx range, and from :func:`_is_rate_limit_error` which handles
-    client-side rate limiting (too many requests from this caller).
+    Overlaps with :func:`_is_server_error` on the 503 range and
+    with :func:`_is_payment_error` on 429 billing messages; the
+    ordering in ``should_fallback`` handles disambiguation by
+    precedence.  This function additionally catches 429 overload
+    responses that aren't payment-related, which :func:`_is_server_error`
+    misses because they fall outside the 500-504 range.
     """
     status = getattr(exc, "status_code", None)
     err_lower = str(exc).lower()

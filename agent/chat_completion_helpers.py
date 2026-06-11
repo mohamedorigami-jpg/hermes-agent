@@ -2516,21 +2516,8 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
             )
         if isinstance(result["error"], ConnectionError):
             logger.warning(
-                "Stream connection lost before any deltas arrived; returning "
-                "empty stub instead of raising: %s", result["error"],
-            )
-            _stub_msg = SimpleNamespace(
-                role="assistant", content=None, tool_calls=None,
-                reasoning_content=None,
-            )
-            return SimpleNamespace(
-                id=PARTIAL_STREAM_STUB_ID,
-                model=getattr(agent, "model", "unknown"),
-                choices=[SimpleNamespace(
-                    index=0, message=_stub_msg,
-                    finish_reason=FINISH_REASON_LENGTH,
-                )],
-                usage=None,
+                "Stream connection lost before any deltas arrived; "
+                "propagating to fallback: %s", result["error"],
             )
         raise result["error"]
     return result["response"]
