@@ -68,6 +68,13 @@ from plugins.web.tavily.provider import (  # noqa: F401 — backward-compat name
 # Parallel + Exa clients re-exported for backward-compat with existing
 # unit tests (tests/tools/test_web_tools_config.py imports _get_parallel_client
 # / _get_async_parallel_client / _get_exa_client directly).
+
+
+def _get_web_search_default_limit() -> int:
+    """Read web.search_default_limit from config, clamped to [1, 100]."""
+    from hermes_cli.config import load_config
+    cfg = load_config()
+    return max(1, min(100, cfg.get("web", {}).get("search_default_limit", 5)))
 from plugins.web.parallel.provider import (  # noqa: F401 — backward-compat names
     _get_async_parallel_client,
     _get_parallel_client,
@@ -915,7 +922,7 @@ def _register_bundled_web_providers_directly() -> None:
             )
 
 
-def web_search_tool(query: str, limit: int = 5) -> str:
+def web_search_tool(query: str, limit: int | None = None) -> str:
     """
     Search the web for information using available search API backend.
 
@@ -949,6 +956,8 @@ def web_search_tool(query: str, limit: int = 5) -> str:
     Raises:
         Exception: If search fails or API key is not set
     """
+    if limit is None:
+        limit = _get_web_search_default_limit()
     try:
         limit = int(limit)
     except (TypeError, ValueError):
@@ -1518,7 +1527,7 @@ WEB_SEARCH_SCHEMA = {
             },
             "limit": {
                 "type": "integer",
-                "description": "Maximum number of results to return. Defaults to 5.",
+                "description": "Maximum number of results to return. Defaults to 5 (configurable via web.search_default_limit).",
                 "minimum": 1,
                 "maximum": 100,
                 "default": 5
@@ -1549,7 +1558,7 @@ registry.register(
     name="web_search",
     toolset="web",
     schema=WEB_SEARCH_SCHEMA,
-    handler=lambda args, **kw: web_search_tool(args.get("query", ""), limit=args.get("limit", 5)),
+    handler=lambda args, **kw: web_search_tool(args.get("query", ""), limit=args.get("limit")),
     check_fn=web_tools_registered,
     requires_env=_web_requires_env(),
     emoji="🔍",
